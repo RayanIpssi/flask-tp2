@@ -1,0 +1,12 @@
+# À COMPLÉTER pendant le TP.
+# Ajouter : SAST (Semgrep), SCA (Trivy fs), image scan (Trivy image),
+# secrets (Gitleaks), Dockerfile lint (Hadolint).
+# Le pipeline doit échouer si CVE CRITICAL > 0 ou secret détecté.
+# Upload des résultats au format SARIF.
+name: security
+on: [push, pull_request]
+jobs:
+  todo:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "À compléter pendant le TP"
