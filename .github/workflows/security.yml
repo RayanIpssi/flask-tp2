@@ -1,12 +1,91 @@
-# À COMPLÉTER pendant le TP.
-# Ajouter : SAST (Semgrep), SCA (Trivy fs), image scan (Trivy image),
-# secrets (Gitleaks), Dockerfile lint (Hadolint).
-# Le pipeline doit échouer si CVE CRITICAL > 0 ou secret détecté.
-# Upload des résultats au format SARIF.
 name: security
 on: [push, pull_request]
+
 jobs:
-  todo:
+  # 1. SAST - Analyse statique du code
+  semgrep:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "À compléter pendant le TP"
+      - uses: actions/checkout@v3
+      - name: Run Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: auto
+          generateSarif: "1"
+      - name: Upload Semgrep SARIF
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: semgrep.sarif
+        if: always()
+
+  # 2. SCA - Scan des dépendances
+  trivy-fs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run Trivy fs
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: ./app
+          format: sarif
+          output: trivy-fs.sarif
+          severity: CRITICAL
+          exit-code: 1
+      - name: Upload Trivy fs SARIF
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: trivy-fs.sarif
+        if: always()
+
+  # 3. Image scan - Scan de l'image Docker
+  trivy-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build Docker image
+        run: docker build -t flask-tp2 .
+      - name: Run Trivy image scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: image
+          image-ref: flask-tp2
+          format: sarif
+          output: trivy-image.sarif
+          severity: CRITICAL
+          exit-code: 1
+      - name: Upload Trivy image SARIF
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: trivy-image.sarif
+        if: always()
+
+  # 4. Secrets - Détection de secrets
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 5. Dockerfile lint
+  hadolint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run Hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          format: sarif
+          output-file: hadolint.sarif
+          no-fail: false
+      - name: Upload Hadolint SARIF
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: hadolint.sarif
+        if: always()
